@@ -1,5 +1,5 @@
 // Material properties database
-let scene, camera, renderer;
+let scene, camera, renderer, controls, currentMesh;
 const MATERIALS = {
     aluminum_6061: {
         name: 'Aluminum 6061-T6',
@@ -53,7 +53,7 @@ const MATERIALS = {
 };
 
 // Three.js scene setup
-let scene, camera, renderer, controls, currentMesh;
+
 let geometryData = {};
 
 function initViewer() {
