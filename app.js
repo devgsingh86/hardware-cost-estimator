@@ -76,8 +76,7 @@ function initViewer() {
     container.appendChild(renderer.domElement);
 
     // Controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    window.viewerControls = controls;
+    controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
@@ -206,6 +205,10 @@ function fitCameraToObject(object) {
     camera.lookAt(0, 0, 0);
     controls.target.set(0, 0, 0);
     controls.update();
+    if (window.viewerControls) {
+        window.viewerControls.target.copy(center);
+        window.viewerControls.update();
+    }
 }
 
 function analyzeGeometry(geometry) {
