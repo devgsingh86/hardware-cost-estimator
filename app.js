@@ -274,6 +274,136 @@ function analyzeGeometry(geometry) {
     calculateCosts();
 }
 
+// ============================================
+// AI-Powered DfM Analysis (OpenRouter)
+// ============================================
+
+const PERPLEXITY_API_KEY = 'pplx-YOUR-API-KEY-HERE'; // Get from perplexity.ai/settings/api
+
+async function analyzeWithAI(geometryData, material) {
+    try {
+        showLoadingState("Consulting AI for DfM analysis...");
+        
+        const prompt = `You are an expert manufacturing engineer analyzing a 3D CAD part for Design for Manufacturing (DfM).
+
+**Part Specifications:**
+- Material: ${material}
+- Volume: ${geometryData.volume.toFixed(2)} mm³
+- Surface Area: ${geometryData.surfaceArea.toFixed(2)} mm²
+- Bounding Box: ${geometryData.boundingBox.x.toFixed(1)} × ${geometryData.boundingBox.y.toFixed(1)} × ${geometryData.boundingBox.z.toFixed(1)} mm
+- Triangle Count: ${geometryData.triangleCount}
+- Complexity Score: ${geometryData.complexityScore.toFixed(2)}
+
+**Your Task:**
+Provide a concise DfM analysis with:
+1. **Manufacturing Method** - Recommended process (CNC machining, 3D printing, casting, etc.)
+2. **Key Challenges** - 2-3 specific manufacturing concerns
+3. **Cost Drivers** - What makes this part expensive or cheap to produce
+4. **Design Improvements** - 3-5 actionable suggestions to reduce cost or improve manufacturability
+
+Keep responses practical and specific to these measurements. Format as clear bullet points.`;
+
+        const response = await fetch('https://api.perplexity.ai/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.1-sonar-small-128k-online', // Free with Perplexity Pro!
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }],
+                temperature: 0.7,
+                max_tokens: 800
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Perplexity API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const aiAnalysis = data.choices[0].message.content;
+        
+        return {
+            success: true,
+            analysis: aiAnalysis,
+            model: 'Perplexity Sonar (Pro)',
+            tokensUsed: data.usage?.total_tokens || 0
+        };
+        
+    } catch (error) {
+        console.error('AI Analysis Error:', error);
+        return {
+            success: false,
+            error: error.message,
+            fallback: generateFallbackSuggestions(geometryData, material)
+        };
+    }
+}
+
+function generateFallbackSuggestions(geometryData, material) {
+    const suggestions = [];
+    
+    if (geometryData.complexityScore > 7) {
+        suggestions.push("⚠️ High complexity detected - consider simplifying geometry");
+    }
+    if (geometryData.volume > 100000) {
+        suggestions.push("📏 Large part - may require multi-axis machining");
+    }
+    if (geometryData.surfaceArea / geometryData.volume > 50) {
+        suggestions.push("🔧 High surface-to-volume ratio - consider design consolidation");
+    }
+    
+    return suggestions.length > 0 ? suggestions.join("\n") : "Standard manufacturing process recommended";
+}
+
+function showLoadingState(message) {
+    const dfmSection = document.getElementById('dfm-suggestions');
+    if (dfmSection) {
+        dfmSection.innerHTML = `
+            <div class="loading-ai">
+                <div class="spinner"></div>
+                <p>${message}</p>
+            </div>
+        `;
+    }
+}
+
+function displayAIAnalysis(result) {
+    const dfmSection = document.getElementById('dfm-suggestions');
+    
+    if (result.success) {
+        dfmSection.innerHTML = `
+            <div class="ai-analysis">
+                <div class="ai-header">
+                    <span class="ai-badge">🤖 AI Analysis</span>
+                    <span class="model-info">${result.model}</span>
+                </div>
+                <div class="ai-content">
+                    ${formatAIResponse(result.analysis)}
+                </div>
+                <div class="ai-footer">
+                    <small>Tokens used: ${result.tokensUsed} | Powered by Perplexity</small>
+                </div>
+            </div>
+        `;
+    } else {
+        dfmSection.innerHTML = `
+            <div class="ai-error">
+                <h4>⚠️ AI Analysis Unavailable</h4>
+                <p class="error-msg">${result.error}</p>
+                <div class="fallback-content">
+                    <h4>Basic Suggestions:</h4>
+                    <p>${result.fallback}</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
 function calculateCosts() {
     const materialType = document.getElementById('material').value;
     const material = MATERIALS[materialType];
@@ -283,27 +413,19 @@ function calculateCosts() {
     const massKg = (volumeCm3 * material.density) / 1000;
     const materialCost = massKg * material.pricePerKg;
 
-    // Machining time estimation (simplified model)
-    const boundingVolume = geometryData.boundingBox.x * geometryData.boundingBox.y * geometryData.boundingBox.z / 1000; // cm³
-    const materialRemovalRate = 50; // cm³/min (typical for CNC)
+    // Machining time estimation
+    const boundingVolume = geometryData.boundingBox.x * geometryData.boundingBox.y * geometryData.boundingBox.z / 1000;
+    const materialRemovalRate = 50;
     const baseMachiningTime = (boundingVolume - volumeCm3) / materialRemovalRate;
 
-    // Adjust for complexity and material
     const complexityMultiplier = 1 + (geometryData.complexityScore / 10) * 0.5;
     const materialMultiplier = 1 / material.machinability;
     const machiningTime = baseMachiningTime * complexityMultiplier * materialMultiplier;
 
-    // Labor cost ($60/hour for CNC machining)
     const laborCost = (machiningTime / 60) * 60;
-
-    // Setup cost (fixed per batch)
     const setupCost = 150;
-    const setupCostPerUnit = setupCost / 100; // Assuming batch of 100
-
-    // Machine cost ($80/hour)
+    const setupCostPerUnit = setupCost / 100;
     const machineCost = (machiningTime / 60) * 80 / 100;
-
-    // Total cost
     const totalCost = materialCost + laborCost / 100 + setupCostPerUnit + machineCost;
 
     // Update UI
@@ -311,7 +433,6 @@ function calculateCosts() {
     document.getElementById('materialCost').textContent = `$${materialCost.toFixed(2)}`;
     document.getElementById('machiningTime').textContent = machiningTime.toFixed(1);
     document.getElementById('complexityScore').textContent = geometryData.complexityScore;
-
     document.getElementById('volume').textContent = `${volumeCm3.toFixed(2)} cm³`;
     document.getElementById('surfaceArea').textContent = `${geometryData.surfaceArea.toFixed(2)} cm²`;
     document.getElementById('boundingBox').textContent = 
@@ -320,101 +441,20 @@ function calculateCosts() {
     document.getElementById('selectedMaterial').textContent = material.name;
     document.getElementById('weight').textContent = `${(massKg * 1000).toFixed(2)} g`;
 
-    // Generate DfM suggestions
-    generateDfMSuggestions(geometryData, material, totalCost);
+    // ✨ NEW: Call AI analysis instead of rule-based suggestions
+    analyzeWithAI(geometryData, material.name).then(aiResult => {
+        displayAIAnalysis(aiResult);
+    });
 
     document.getElementById('loading').classList.remove('active');
     document.getElementById('results').classList.add('active');
 }
 
-function generateDfMSuggestions(geometry, material, currentCost) {
-    const suggestions = [];
+// Call AI analysis instead of rule-based suggestions
+analyzeWithAI(geometryData, material.name).then(aiResult => {
+    displayAIAnalysis(aiResult);
+});
 
-    // Rule-based DfM suggestions
-    if (geometry.complexityScore > 7) {
-        suggestions.push({
-            title: 'Reduce Geometric Complexity',
-            description: `Your part has a complexity score of ${geometry.complexityScore}/10, indicating intricate features that increase machining time. Consider simplifying curves, reducing the number of surfaces, or using standard geometries where possible.`,
-            impact: 'high',
-            savings: `Potential savings: $${(currentCost * 0.15).toFixed(2)} - $${(currentCost * 0.25).toFixed(2)} per unit`
-        });
-    }
-
-    const aspectRatio = Math.max(geometry.boundingBox.x, geometry.boundingBox.y, geometry.boundingBox.z) / 
-                       Math.min(geometry.boundingBox.x, geometry.boundingBox.y, geometry.boundingBox.z);
-
-    if (aspectRatio > 5) {
-        suggestions.push({
-            title: 'High Aspect Ratio Detected',
-            description: `The part has an aspect ratio of ${aspectRatio.toFixed(1)}:1, which may cause deflection during machining and require specialized tooling or multiple setups. Consider redesigning to reduce the length-to-width ratio.`,
-            impact: 'medium',
-            savings: `Potential savings: $${(currentCost * 0.10).toFixed(2)} - $${(currentCost * 0.15).toFixed(2)} per unit`
-        });
-    }
-
-    if (material.machinability < 0.6) {
-        suggestions.push({
-            title: 'Consider Alternative Materials',
-            description: `${material.name} has lower machinability, increasing tool wear and cycle time. If mechanical properties allow, switching to Aluminum 6061 or Mild Steel could reduce costs by 20-40% while maintaining similar strength-to-weight ratios.`,
-            impact: 'high',
-            savings: `Potential savings: $${(currentCost * 0.20).toFixed(2)} - $${(currentCost * 0.40).toFixed(2)} per unit`
-        });
-    }
-
-    const surfaceToVolumeRatio = geometry.surfaceArea / Math.pow(geometry.volume, 2/3);
-    if (surfaceToVolumeRatio > 8) {
-        suggestions.push({
-            title: 'High Surface-to-Volume Ratio',
-            description: `Excessive surface area relative to volume suggests thin walls or numerous pockets, leading to longer finish machining times. Consolidate features or increase wall thickness where structurally acceptable.`,
-            impact: 'medium',
-            savings: `Potential savings: $${(currentCost * 0.08).toFixed(2)} - $${(currentCost * 0.12).toFixed(2)} per unit`
-        });
-    }
-
-    if (geometry.triangleCount > 50000) {
-        suggestions.push({
-            title: 'Optimize CAD Model Resolution',
-            description: `High triangle count (${geometry.triangleCount.toLocaleString()}) may indicate over-tessellation. Export STL files with appropriate tolerance settings to reduce file size without compromising critical dimensions.`,
-            impact: 'low',
-            savings: `Better processing efficiency and reduced CAM programming time`
-        });
-    }
-
-    // Standard DfM best practices
-    suggestions.push({
-        title: 'Specify Standard Tolerances',
-        description: `Unless critical for function, use standard tolerances (±0.125mm for general features). Tight tolerances (±0.025mm or finer) can double machining costs due to required precision equipment and inspection.`,
-        impact: 'high',
-        savings: `Potential savings: $${(currentCost * 0.15).toFixed(2)} - $${(currentCost * 0.30).toFixed(2)} per unit`
-    });
-
-    suggestions.push({
-        title: 'Design for Standard Tooling',
-        description: `Use standard drill sizes, thread pitches, and fillet radii to avoid custom tooling. Standard end mills (3mm, 6mm, 12mm) and drills significantly reduce setup time and tooling costs.`,
-        impact: 'medium',
-        savings: `Potential savings: $${(currentCost * 0.05).toFixed(2)} - $${(currentCost * 0.10).toFixed(2)} per unit`
-    });
-
-    // Display suggestions
-    const container = document.getElementById('suggestionsContainer');
-    container.innerHTML = '';
-
-    suggestions.forEach((suggestion, index) => {
-        const div = document.createElement('div');
-        div.className = 'suggestion-item';
-        div.innerHTML = `
-            <div class="suggestion-header">
-                <div class="suggestion-title">${index + 1}. ${suggestion.title}</div>
-                <span class="impact-badge impact-${suggestion.impact}">
-                    ${suggestion.impact.toUpperCase()} IMPACT
-                </span>
-            </div>
-            <div class="suggestion-desc">${suggestion.description}</div>
-            <div class="suggestion-savings">💰 ${suggestion.savings}</div>
-        `;
-        container.appendChild(div);
-    });
-}
 
 // Material change handler
 document.getElementById('material').addEventListener('change', () => {
