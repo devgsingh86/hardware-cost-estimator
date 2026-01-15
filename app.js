@@ -75,7 +75,7 @@ function initViewer() {
     container.appendChild(renderer.domElement);
 
     // Controls
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
@@ -156,7 +156,7 @@ function loadSTL(arrayBuffer) {
     }
 
     // Load STL
-    const loader = new THREE.STLLoader();
+    const loader = new STLLoader();
     const geometry = loader.parse(arrayBuffer);
 
     // Get material color
