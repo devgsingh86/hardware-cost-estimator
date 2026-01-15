@@ -1,4 +1,5 @@
 // Material properties database
+let scene, camera, renderer;
 const MATERIALS = {
     aluminum_6061: {
         name: 'Aluminum 6061-T6',
@@ -76,6 +77,7 @@ function initViewer() {
 
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
+    window.viewerControls = controls;
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
@@ -101,7 +103,9 @@ function initViewer() {
 
 function animate() {
     requestAnimationFrame(animate);
-    controls.update();
+    if (window.viewerControls) {
+        window.viewerControls.update();
+    }
     renderer.render(scene, camera);
 }
 
