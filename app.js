@@ -275,10 +275,9 @@ function analyzeGeometry(geometry) {
 }
 
 // ============================================
-// AI-Powered DfM Analysis (OpenRouter)
+// AI-Powered DfM Analysis Using Perplexity API
 // ============================================
 
-const PERPLEXITY_API_KEY = 'pplx-YOUR-API-KEY-HERE'; // Get from perplexity.ai/settings/api
 
 async function analyzeWithAI(geometryData, material) {
     try {
@@ -303,21 +302,21 @@ Provide a concise DfM analysis with:
 
 Keep responses practical and specific to these measurements. Format as clear bullet points.`;
 
-        const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        const response = await fetch('http://localhost:3001/api/analyze', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.1-sonar-small-128k-online', // Free with Perplexity Pro!
-                messages: [{
-                    role: 'user',
-                    content: prompt
-                }],
-                temperature: 0.7,
-                max_tokens: 800
-            })
+            model: 'sonar-pro',  // ✅ CHANGE THIS
+            messages: [{
+            role: 'user',
+            content: prompt
+            }],
+            temperature: 0.7,
+            max_tokens: 800
+        })
+
         });
 
         if (!response.ok) {
@@ -326,6 +325,9 @@ Keep responses practical and specific to these measurements. Format as clear bul
 
         const data = await response.json();
         const aiAnalysis = data.choices[0].message.content;
+        console.log('Full API Response:', JSON.stringify(data, null, 2));
+        console.log('Has choices?', data.choices);
+        console.log('First choice?', data.choices?.[0]);
         
         return {
             success: true,
@@ -372,37 +374,55 @@ function showLoadingState(message) {
     }
 }
 
+function formatAIResponse(text) {
+    // Convert markdown-like formatting to HTML
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic
+        .replace(/\n\n/g, '</p><p>')                       // Paragraphs
+        .replace(/\n- /g, '<br>• ')                        // Bullet points
+        .replace(/\n/g, '<br>');                           // Line breaks
+}
+
 function displayAIAnalysis(result) {
-    const dfmSection = document.getElementById('dfm-suggestions');
+    const dfmSection = document.getElementById('aiAnalysisContent');
     
-    if (result.success) {
+    if (!dfmSection) {
+        console.error('❌ aiAnalysisContent element not found in HTML!');
+        return;
+    }
+    
+    if (result.success && result.analysis) {
         dfmSection.innerHTML = `
-            <div class="ai-analysis">
-                <div class="ai-header">
-                    <span class="ai-badge">🤖 AI Analysis</span>
-                    <span class="model-info">${result.model}</span>
+            <div class="ai-analysis" style="color: #333; line-height: 1.8;">
+                <div class="ai-header" style="background: #e3f2fd; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                    <span class="ai-badge" style="font-weight: bold; color: #1976d2;">🤖 ${result.model || 'AI Analysis'}</span>
+                    ${result.tokensUsed ? `<span class="model-info" style="color: #666; font-size: 12px;">Tokens: ${result.tokensUsed}</span>` : ''}
                 </div>
-                <div class="ai-content">
-                    ${formatAIResponse(result.analysis)}
+                <div class="ai-content" style="padding: 15px; font-size: 14px;">
+                    <p>${formatAIResponse(result.analysis)}</p>
                 </div>
-                <div class="ai-footer">
-                    <small>Tokens used: ${result.tokensUsed} | Powered by Perplexity</small>
+                <div class="ai-footer" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px; color: #666; text-align: right;">
+                    <small>Powered by Perplexity AI</small>
                 </div>
             </div>
         `;
     } else {
         dfmSection.innerHTML = `
-            <div class="ai-error">
-                <h4>⚠️ AI Analysis Unavailable</h4>
-                <p class="error-msg">${result.error}</p>
-                <div class="fallback-content">
-                    <h4>Basic Suggestions:</h4>
-                    <p>${result.fallback}</p>
+            <div class="ai-error" style="color: #dc3545; padding: 15px;">
+                <h4 style="margin-top: 0;">⚠️ AI Analysis Unavailable</h4>
+                <p class="error-msg" style="color: #666;">${result.error || 'Unable to generate analysis'}</p>
+                ${result.fallback ? `
+                <div class="fallback-content" style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
+                    <h4 style="margin-top: 0; color: #856404;">📋 Basic Suggestions:</h4>
+                    <p style="margin-bottom: 0; color: #856404;">${result.fallback}</p>
                 </div>
+                ` : ''}
             </div>
         `;
     }
 }
+
 
 function calculateCosts() {
     const materialType = document.getElementById('material').value;
@@ -441,20 +461,27 @@ function calculateCosts() {
     document.getElementById('selectedMaterial').textContent = material.name;
     document.getElementById('weight').textContent = `${(massKg * 1000).toFixed(2)} g`;
 
-    // ✨ NEW: Call AI analysis instead of rule-based suggestions
-    analyzeWithAI(geometryData, material.name).then(aiResult => {
-        displayAIAnalysis(aiResult);
-    });
+    console.log('=== DEBUG: Geometry Data ===');
+    console.log('geometryData:', geometryData);
+    console.log('volume:', geometryData?.volume);
+    console.log('surfaceArea:', geometryData?.surfaceArea);
+    console.log('material:', material.name);
+
+    if (geometryData && geometryData.volume) {
+        analyzeWithAI(geometryData, material.name)
+            .then(aiResult => {
+                displayAIAnalysis(aiResult);
+            })
+            .catch(error => {
+                console.error('AI Analysis failed:', error);
+            });
+    } else {
+        console.error('❌ geometryData is missing or invalid!');
+    }
 
     document.getElementById('loading').classList.remove('active');
     document.getElementById('results').classList.add('active');
 }
-
-// Call AI analysis instead of rule-based suggestions
-analyzeWithAI(geometryData, material.name).then(aiResult => {
-    displayAIAnalysis(aiResult);
-});
-
 
 // Material change handler
 document.getElementById('material').addEventListener('change', () => {
