@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 CAD Estimator - Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            color: white;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            opacity: 0.7;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .test-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .test-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .test-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .test-button.danger {
+            background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+        }
+
+        .test-button.success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .test-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .output-box {
+            background: #1a202c;
+            border: 1px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px;
+            border-left: 3px solid #667eea;
+            padding-left: 12px;
+        }
+
+        .log-entry.success { border-left-color: #48bb78; color: #48bb78; }
+        .log-entry.error { border-left-color: #f56565; color: #f56565; }
+        .log-entry.info { border-left-color: #4299e1; color: #4299e1; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-badge.online { background: #48bb78; }
+        .status-badge.offline { background: #f56565; }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 CAD Cost Estimator - Test Suite</h1>
+        <p class="subtitle">Manual testing interface for developers</p>
+
+        <!-- Backend Status -->
+        <div class="test-section">
+            <h2>
+                🔌 Backend Status
+                <span id="backend-status" class="status-badge offline">Checking...</span>
+            </h2>
+            <p style="opacity: 0.8; margin-bottom: 15px;">
+                Verify backend server is running on http://localhost:3001
+            </p>
+            <div class="test-grid">
+                <button class="test-button" onclick="testBackendHealth()">
+                    ✅ Test Health Endpoint
+                </button>
+                <button class="test-button" onclick="testMaterialPrices()">
+                    💰 Test Material Prices API
+                </button>
+                <button class="test-button" onclick="testSimilarParts()">
+                    📊 Test Similar Parts API
+                </button>
+            </div>
+        </div>
+
+        <!-- File Upload Tests -->
+        <div class="test-section">
+            <h2>📁 File Upload Tests</h2>
+            <p style="opacity: 0.8; margin-bottom: 15px;">
+                Test CAD file processing endpoints
+            </p>
+            <div class="test-grid">
+                <button class="test-button success" onclick="testMockSTEP()">
+                    📐 Mock STEP Upload
+                </button>
+                <button class="test-button" onclick="testMockSTL()">
+                    🔺 Mock STL Upload
+                </button>
+                <button class="test-button danger" onclick="testInvalidFile()">
+                    ❌ Test Invalid File
+                </button>
+            </div>
+        </div>
+
+        <!-- Integration Tests -->
+        <div class="test-section">
+            <h2>🔗 Integration Tests</h2>
+            <p style="opacity: 0.8; margin-bottom: 15px;">
+                Test complete workflows
+            </p>
+            <div class="test-grid">
+                <button class="test-button" onclick="testCompleteWorkflow()">
+                    🚀 Full STEP Workflow
+                </button>
+                <button class="test-button" onclick="testAIAnalysis()">
+                    🤖 AI Analysis (Perplexity)
+                </button>
+                <button class="test-button" onclick="clearOutput()">
+                    🗑️ Clear Output
+                </button>
+            </div>
+        </div>
+
+        <!-- Output Console -->
+        <div class="test-section">
+            <h2>📋 Test Output</h2>
+            <div id="output" class="output-box">
+                <div class="log-entry info">Waiting for test execution...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3001';
+        
+        // Output logging functions
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            output.appendChild(entry);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function logJSON(data, label = 'Response') {
+            const output = document.getElementById('output');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<strong>${label}:</strong><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            output.appendChild(entry);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+            log('Output cleared', 'info');
+        }
+
+        // Check backend status on load
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    const badge = document.getElementById('backend-status');
+                    badge.textContent = 'Online';
+                    badge.className = 'status-badge online';
+                    log('✅ Backend is online and responding', 'success');
+                }
+            } catch (error) {
+                const badge = document.getElementById('backend-status');
+                badge.textContent = 'Offline';
+                badge.className = 'status-badge offline';
+                log('❌ Backend is not responding. Make sure server is running.', 'error');
+            }
+        }
+
+        // Test Functions
+        async function testBackendHealth() {
+            log('Testing /health endpoint...', 'info');
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                log('✅ Health check passed', 'success');
+                logJSON(data, 'Health Status');
+            } catch (error) {
+                log(`❌ Health check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMaterialPrices() {
+            log('Testing /api/materials endpoint...', 'info');
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/materials`);
+                const data = await response.json();
+                log(`✅ Loaded ${Object.keys(data.materials).length} materials`, 'success');
+                logJSON(data, 'Material Prices');
+            } catch (error) {
+                log(`❌ Material prices test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSimilarParts() {
+            log('Testing /api/similar-parts endpoint...', 'info');
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/similar-parts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        volume: 125.5,
+                        surfaceArea: 450.2,
+                        material: 'Aluminum 6061-T6',
+                        estimatedCost: 87.50
+                    })
+                });
+                const data = await response.json();
+                log(`✅ Found ${data.similarParts.length} similar parts`, 'success');
+                logJSON(data, 'Similar Parts');
+            } catch (error) {
+                log(`❌ Similar parts test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMockSTEP() {
+            log('Testing STEP file upload with mock data...', 'info');
+            try {
+                // Create mock STEP file
+                const mockContent = 'ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;';
+                const blob = new Blob([mockContent], { type: 'application/step' });
+                const file = new File([blob], 'test-gear.step', { type: 'application/step' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                log('📤 Uploading mock STEP file...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/api/process-cad`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                log('✅ STEP file processed successfully', 'success');
+                logJSON(data, 'STEP Analysis Result');
+            } catch (error) {
+                log(`❌ STEP upload test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMockSTL() {
+            log('Testing STL file upload...', 'info');
+            try {
+                const mockContent = 'solid test\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid';
+                const blob = new Blob([mockContent], { type: 'application/sla' });
+                const file = new File([blob], 'test-cube.stl', { type: 'application/sla' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                log('📤 Uploading mock STL file...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/api/process-cad`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                log('✅ STL file accepted (client-side processing)', 'success');
+                logJSON(data, 'STL Response');
+            } catch (error) {
+                log(`❌ STL upload test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInvalidFile() {
+            log('Testing invalid file rejection...', 'info');
+            try {
+                const blob = new Blob(['invalid content'], { type: 'text/plain' });
+                const file = new File([blob], 'invalid.txt', { type: 'text/plain' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                log('📤 Uploading invalid file...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/api/process-cad`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    log('✅ Invalid file correctly rejected', 'success');
+                    logJSON(data, 'Error Response');
+                } else {
+                    log('❌ Invalid file was not rejected!', 'error');
+                }
+            } catch (error) {
+                log(`✅ Invalid file rejected: ${error.message}`, 'success');
+            }
+        }
+
+        async function testCompleteWorkflow() {
+            log('🚀 Starting complete workflow test...', 'info');
+            log('─────────────────────────────────────', 'info');
+            
+            // Step 1: Upload STEP file
+            await testMockSTEP();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Step 2: Get material prices
+            await testMaterialPrices();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Step 3: Get similar parts
+            await testSimilarParts();
+            
+            log('─────────────────────────────────────', 'info');
+            log('✅ Complete workflow test finished', 'success');
+        }
+
+        async function testAIAnalysis() {
+            log('Testing AI analysis endpoint...', 'info');
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'sonar-pro',
+                        messages: [
+                            {
+                                role: 'user',
+                                content: 'Test message: Analyze a gear with 24 teeth, 50mm diameter, aluminum 6061'
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 200
+                    })
+                });
+                
+                const data = await response.json();
+                log('✅ AI analysis completed', 'success');
+                logJSON(data, 'AI Response');
+            } catch (error) {
+                log(`❌ AI analysis failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            checkBackendStatus();
+            log('🧪 Test suite initialized', 'success');
+            log('Backend: http://localhost:3001', 'info');
+        });
+    </script>
+</body>
+</html>
