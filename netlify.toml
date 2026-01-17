@@ -1,0 +1,44 @@
+[build]
+  base = ""
+  publish = "."
+  command = ""
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Production (main branch)
+[context.production]
+  command = ""
+  publish = "."
+
+[context.production.environment]
+  NODE_ENV = "production"
+
+# Staging (develop branch)
+[context.develop]
+  command = ""
+  publish = "."
+
+[context.develop.environment]
+  NODE_ENV = "staging"
+
+# Feature branches preview
+[context.branch-deploy]
+  command = ""
+  publish = "."
+
+[context.branch-deploy.environment]
+  NODE_ENV = "preview"
+
+# Redirects for SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Backend API proxy (optional - if backend on same domain)
+[[redirects]]
+  from = "/api/*"
+  to = "https://your-backend-url.railway.app/:splat"
+  status = 200
+  force = true
